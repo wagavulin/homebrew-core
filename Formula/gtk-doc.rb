@@ -18,6 +18,7 @@ class GtkDoc < Formula
   depends_on "docbook"
   depends_on "docbook-xsl"
   depends_on "libxml2"
+  depends_on "source-highlight"
 
   resource "six" do
     url "https://files.pythonhosted.org/packages/b3/b2/238e2590826bfdd113244a40d9d3eb26918bd798fc187e2360a8367068db/six-1.10.0.tar.gz"
@@ -35,6 +36,7 @@ class GtkDoc < Formula
     system "./configure", "--disable-debug",
                           "--disable-dependency-tracking",
                           "--prefix=#{prefix}",
+                          "--with-highlight=source-highlight",
                           "--with-xml-catalog=#{etc}/xml/catalog"
     system "make"
     system "make", "install"
