@@ -39,6 +39,8 @@ class Poppler < Formula
   conflicts_with "pdftohtml", "pdf2image", "xpdf",
     :because => "poppler, pdftohtml, pdf2image, and xpdf install conflicting executables"
 
+  patch :DATA
+
   resource "font-data" do
     url "https://poppler.freedesktop.org/poppler-data-0.4.8.tar.gz"
     sha256 "1096a18161f263cccdc6d8a2eb5548c41ff8fcf9a3609243f1b6296abdf72872"
@@ -49,12 +51,14 @@ class Poppler < Formula
   def install
     ENV.cxx11 if build.with?("qt") || MacOS.version < :mavericks
 
-    args = std_cmake_args + %w[
+    args = std_cmake_args + %W[
       -DENABLE_XPDF_HEADERS=ON
       -DENABLE_GLIB=ON
       -DBUILD_GTK_TESTS=OFF
       -DWITH_GObjectIntrospection=ON
       -DENABLE_QT4=OFF
+      -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON
+      -DCMAKE_INSTALL_NAME_DIR=#{prefix}/lib
     ]
 
     if build.with? "qt"
@@ -80,17 +84,23 @@ class Poppler < Formula
     resource("font-data").stage do
       system "make", "install", "prefix=#{prefix}"
     end
-
-    libpoppler = (lib/"libpoppler.dylib").readlink
-    ["#{lib}/libpoppler-cpp.dylib", "#{lib}/libpoppler-glib.dylib",
-     *Dir["#{bin}/*"]].each do |f|
-      macho = MachO.open(f)
-      macho.change_dylib("@rpath/#{libpoppler}", "#{lib}/#{libpoppler}")
-      macho.write!
-    end
   end
 
   test do
     system "#{bin}/pdfinfo", test_fixtures("test.pdf")
   end
 end
+
+__END__
+diff --git a/glib/CMakeLists.txt b/glib/CMakeLists.txt
+index e089ef8..9584735 100644
+--- a/glib/CMakeLists.txt
++++ b/glib/CMakeLists.txt
+@@ -115,6 +115,7 @@ if (HAVE_INTROSPECTION)
+   include(GObjectIntrospectionMacros)
+   set(INTROSPECTION_GIRS)
+   set(INTROSPECTION_SCANNER_ARGS "--add-include-path=${CMAKE_CURRENT_SOURCE_DIR} --warn-all")
++  set(INTROSPECTION_SCANNER_ARGS ${INTROSPECTION_SCANNER_ARGS} --library-path=${CMAKE_CURRENT_BINARY_DIR})
+   set(INTROSPECTION_COMPILER_ARGS "--includedir=${CMAKE_CURRENT_SOURCE_DIR}")
+
+   set(introspection_files ${poppler_glib_SRCS} ${poppler_glib_public_headers})
